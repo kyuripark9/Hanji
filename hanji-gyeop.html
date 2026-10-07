@@ -1,0 +1,1255 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>겹 · Gyeop</title>
+<style>
+  :root{
+    --bg:#F5F2ED;
+    --paper:#EFE6D6; --paper-alpha:.56; --paper-shade:#C8B79E;
+    --fiber:#B5A083; --fleck:#6B5340;
+    --ink:#2A1F1A;
+    --wood:#9A7656; --wood-dark:#5E4532;
+    --seal:#B23A2A;
+    --glow:255, 196, 120; --glow-base:0; --lit-boost:.10;
+    --shadow:58, 40, 26; --shadow-alpha:.42;
+    --text:#3A2E27; --muted:#8A7B6E;
+    --vignette:rgba(120,95,70,.16);
+    --ui-bg:rgba(250,246,239,.74); --ui-border:rgba(90,70,50,.22); --ui-hover:rgba(255,252,246,.96);
+    --ui-on:rgba(255,214,150,.9);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Nanum Myeongjo","Noto Serif KR","AppleMyungjo",Batang,serif;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#2D2420;
+      --paper:#8C7765; --paper-alpha:.5; --paper-shade:#4A3B31;
+      --fiber:#C9B597; --fleck:#1E1612;
+      --ink:#17100D;
+      --wood:#5B4333; --wood-dark:#1F1612;
+      --seal:#C24A35;
+      --glow:255, 172, 92; --glow-base:.32; --lit-boost:.28;
+      --shadow:0, 0, 0; --shadow-alpha:.6;
+      --text:#EADFCF; --muted:#A89582;
+      --vignette:rgba(10,6,4,.45);
+      --ui-bg:rgba(58,47,41,.72); --ui-border:rgba(234,223,207,.16); --ui-hover:rgba(78,64,55,.95);
+      --ui-on:rgba(214,140,70,.85);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#2D2420;
+    --paper:#8C7765; --paper-alpha:.5; --paper-shade:#4A3B31;
+    --fiber:#C9B597; --fleck:#1E1612;
+    --ink:#17100D;
+    --wood:#5B4333; --wood-dark:#1F1612;
+    --seal:#C24A35;
+    --glow:255, 172, 92; --glow-base:.32; --lit-boost:.28;
+    --shadow:0, 0, 0; --shadow-alpha:.6;
+    --text:#EADFCF; --muted:#A89582;
+    --vignette:rgba(10,6,4,.45);
+    --ui-bg:rgba(58,47,41,.72); --ui-border:rgba(234,223,207,.16); --ui-hover:rgba(78,64,55,.95);
+    --ui-on:rgba(214,140,70,.85);
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden}
+  body{
+    background:var(--bg);color:var(--text);font-family:var(--serif);
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+  }
+  #stage{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+
+  /* ---------- header ---------- */
+  #top{
+    position:fixed;top:0;left:0;right:0;z-index:2;pointer-events:none;
+    display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:12px 20px;
+    padding:max(16px,env(safe-area-inset-top)) 24px 0;
+  }
+  .brand h1{margin:0;font-weight:400;display:flex;align-items:baseline;gap:10px;line-height:1}
+  .brand h1 .ko{font-size:34px;letter-spacing:.02em}
+  .brand h1 .lat{font-size:15px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  .sub{margin:8px 0 0;max-width:340px;font-size:13px;line-height:1.5;color:var(--muted)}
+  .sub-short{display:none;margin:6px 0 0;font-size:12px;color:var(--muted)}
+  .clue{
+    justify-self:center;text-align:center;padding:10px 18px 11px;min-width:240px;max-width:420px;
+    background:var(--ui-bg);border:1px solid var(--ui-border);
+    border-radius:14px 9px 15px 10px / 10px 14px 9px 15px;
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    transition:transform .4s ease,opacity .4s ease;
+  }
+  .clue.swap{opacity:0;transform:translateY(-6px)}
+  .clue-label{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .clue-main{font-size:20px;margin-top:3px}
+  .clue-main .rom{font-style:italic}
+  .clue-main .dash{color:var(--muted);margin:0 8px}
+  .clue-tip{font-size:12.5px;line-height:1.45;color:var(--muted);margin-top:4px}
+  .progress{justify-self:end;display:flex;gap:6px;pointer-events:auto}
+  .cell{
+    width:30px;height:30px;display:grid;place-items:center;font-size:15px;color:var(--muted);
+    background:var(--ui-bg);border:1px solid var(--ui-border);
+    border-radius:5px 3px 6px 4px;transition:background .5s,color .5s,transform .3s;
+  }
+  .cell.current{border-style:dashed;border-color:var(--seal);color:var(--seal)}
+  .cell.done{background:var(--seal);border-color:var(--seal);color:var(--bg);transform:rotate(-3deg)}
+  .cell.done:nth-child(even){transform:rotate(2deg)}
+
+  /* ---------- controls ---------- */
+  #controls{
+    position:fixed;z-index:2;left:50%;transform:translateX(-50%);
+    bottom:max(14px,env(safe-area-inset-bottom));
+    display:flex;gap:8px;max-width:calc(100vw - 16px);
+  }
+  .ctl{
+    font:inherit;color:var(--text);cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:1px;min-width:62px;
+    padding:7px 12px 6px;background:var(--ui-bg);border:1px solid var(--ui-border);
+    border-radius:13px 9px 14px 10px / 10px 13px 9px 14px;
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    transition:transform .18s cubic-bezier(.3,1.6,.5,1),background .2s,box-shadow .2s,border-color .2s;
+    touch-action:manipulation;
+  }
+  .ctl .ko{font-size:17px;line-height:1.1;white-space:nowrap;word-break:keep-all}
+  .ctl .en{font-size:10.5px;letter-spacing:.06em;color:var(--muted);white-space:nowrap}
+  .ctl:hover{transform:translateY(-3px) rotate(-.6deg);background:var(--ui-hover);box-shadow:0 6px 16px rgba(var(--shadow),.18)}
+  .ctl:active{transform:translateY(0) scale(.96)}
+  .ctl:focus-visible{outline:1.5px solid var(--seal);outline-offset:3px}
+  .ctl.on{background:var(--ui-on);border-color:transparent;box-shadow:0 0 26px rgba(var(--glow),.7)}
+  .ctl.on .en{color:var(--text)}
+  .ctl[aria-pressed="false"] .ko{opacity:.45;text-decoration:line-through}
+  .ctl:disabled{opacity:.4;cursor:default;transform:none;box-shadow:none}
+
+  /* ---------- toast ---------- */
+  #toast{
+    position:fixed;z-index:3;transform:translate(-50%,6px);opacity:0;pointer-events:none;
+    padding:8px 14px;font-size:13.5px;max-width:min(340px,86vw);text-align:center;
+    background:var(--ui-hover);border:1px solid var(--ui-border);border-radius:10px 7px 11px 8px;
+    box-shadow:0 8px 24px rgba(var(--shadow),.2);transition:opacity .35s,transform .35s;
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+
+  /* ---------- solved card ---------- */
+  #card{
+    position:fixed;z-index:3;width:300px;padding:20px 22px 18px;
+    background:var(--ui-hover);border:1px solid var(--ui-border);
+    border-radius:16px 10px 18px 12px / 12px 18px 10px 16px;
+    box-shadow:0 18px 50px rgba(var(--shadow),.25);
+    opacity:0;transform:translateY(14px) rotate(.6deg);transition:opacity .5s ease,transform .6s cubic-bezier(.2,1.2,.4,1);
+  }
+  #card.show{opacity:1;transform:translateY(0) rotate(-.4deg)}
+  #card[hidden]{display:none}
+  .card-seal{
+    display:inline-grid;place-items:center;min-width:64px;height:64px;padding:0 10px;font-size:40px;
+    background:var(--seal);color:var(--bg);border-radius:6px 4px 7px 5px;transform:rotate(-4deg);
+  }
+  .card-head{display:flex;align-items:center;gap:16px}
+  .card-title{font-size:19px;line-height:1.3}
+  .card-title #cardRom{font-style:italic}
+  #card p{margin:8px 0 14px;font-size:14px;line-height:1.6;color:var(--muted)}
+  .card-row{display:flex;gap:5px;margin:-4px 0 14px;flex-wrap:wrap}
+  .card-row span{width:30px;height:30px;display:grid;place-items:center;background:var(--seal);color:var(--bg);border-radius:4px;font-size:16px}
+  .card-row span:nth-child(odd){transform:rotate(-3deg)}
+  .card-row span:nth-child(even){transform:rotate(2deg)}
+  #card .ctl{flex-direction:row;gap:8px;width:100%;justify-content:center;padding:10px 14px;font-size:15px}
+
+  @media (max-width:759px){
+    #top{grid-template-columns:1fr auto;padding:max(12px,env(safe-area-inset-top)) 14px 0;gap:8px 10px}
+    .brand h1 .ko{font-size:28px}
+    .sub{display:none}
+    .sub-short{display:block}
+    .clue{grid-column:1 / -1;grid-row:2;min-width:0;width:100%;padding:8px 12px 9px}
+    .clue-main{font-size:17px}
+    .lat-x{display:none}
+    .progress{gap:3px}
+    .cell{width:22px;height:22px;font-size:12px}
+    .ctl{min-width:0;padding:6px 10px 5px}
+    .ctl .en{font-size:9.5px}
+    #card{width:auto;padding:14px 16px 14px}
+    .card-seal{min-width:48px;height:48px;font-size:28px}
+    #card p{margin:8px 0 10px;font-size:13px;line-height:1.5}
+    #card .ctl{padding:8px 12px}
+  }
+  @media (max-height:620px) and (min-width:760px){
+    .sub{display:none}.sub-short{display:block}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .ctl,#card,.clue,#toast{transition:none}
+  }
+</style>
+</head>
+<body>
+<canvas id="stage" aria-label="Hanji window: drag paper sheets onto the lattice to compose a Korean syllable"></canvas>
+
+<header id="top">
+  <div class="brand">
+    <h1><span class="ko">겹</span><span class="lat">Gyeop<span class="lat-x"> · layers</span></span></h1>
+    <p class="sub">Hanji is thin enough to read through. Drag the sheets onto the lattice window until their brushstrokes stack into one syllable. Tap a sheet to turn it over. A face-down sheet shows its ink faintly and mirrored. Hold <b>빛</b> to shine light through the layers.</p>
+    <p class="sub-short">Stack sheets into one letter · tap to turn over</p>
+  </div>
+  <div class="clue" id="clue">
+    <div class="clue-label" id="clueLabel">장 1 / 6</div>
+    <div class="clue-main"><span class="rom" id="clueRom">dak</span><span class="dash">—</span><span id="clueMean">paper mulberry</span></div>
+    <div class="clue-tip" id="clueTip"></div>
+  </div>
+  <div class="progress" id="progress" aria-label="Progress"></div>
+</header>
+
+<footer id="controls">
+  <button class="ctl" id="lightBtn" title="Hold (or hold Space) to shine light through the paper"><span class="ko">빛</span><span class="en">hold · light</span></button>
+  <button class="ctl" id="hintBtn" title="Show the letter's outline (H)"><span class="ko">힌트</span><span class="en">hint</span></button>
+  <button class="ctl" id="resetBtn" title="Lay the sheets out again (R)"><span class="ko">다시</span><span class="en">reset</span></button>
+  <button class="ctl" id="soundBtn" aria-pressed="true" title="Paper sounds"><span class="ko">소리</span><span class="en">sound</span></button>
+  <button class="ctl" id="themeBtn" title="Switch day / night"><span class="ko">밤</span><span class="en">night</span></button>
+</footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<section id="card" hidden aria-live="polite">
+  <div class="card-head">
+    <div class="card-seal" id="cardSeal">닥</div>
+    <div class="card-title"><span id="cardRom">dak</span> · <span id="cardMean">paper mulberry</span></div>
+  </div>
+  <p id="cardNote"></p>
+  <div class="card-row" id="cardRow"></div>
+  <button class="ctl" id="nextBtn"><span class="ko">다음 장</span><span>· next sheet →</span></button>
+</section>
+
+<script>
+(() => {
+'use strict';
+
+/* =========================================================
+   Data — jamo stroke shapes, syllable layouts, levels
+   ========================================================= */
+// Each jamo: list of strokes in a unit box. A stroke is a polyline [[x,y],...]
+// or a circle {c:[cx,cy,r]}. Order & direction follow brush-writing order.
+const J = {
+  'ㄱ':[[[.08,.16],[.88,.16],[.8,.94]]],
+  'ㄴ':[[[.14,.08],[.14,.86],[.92,.86]]],
+  'ㄷ':[[[.12,.14],[.86,.14]],[[.12,.14],[.12,.86],[.9,.86]]],
+  'ㄹ':[[[.12,.1],[.86,.1],[.86,.46],[.14,.5],[.14,.9],[.9,.9]]],
+  'ㅁ':[[[.14,.12],[.14,.88]],[[.14,.12],[.86,.12],[.86,.88]],[[.14,.88],[.86,.88]]],
+  'ㅂ':[[[.18,.08],[.18,.9]],[[.82,.08],[.82,.9]],[[.18,.48],[.82,.48]],[[.18,.9],[.82,.9]]],
+  'ㅅ':[[[.52,.08],[.42,.5],[.08,.92]],[[.45,.48],[.92,.9]]],
+  'ㅇ':[{c:[.5,.5,.38]}],
+  'ㅈ':[[[.14,.14],[.8,.14],[.42,.58],[.1,.92]],[[.5,.5],[.92,.9]]],
+  'ㅊ':[[[.42,.0],[.6,.1]],[[.14,.26],[.8,.26],[.44,.64],[.1,.95]],[[.5,.6],[.92,.95]]],
+  'ㅋ':[[[.1,.14],[.86,.14],[.78,.94]],[[.14,.5],[.8,.5]]],
+  'ㅌ':[[[.14,.12],[.86,.12]],[[.14,.47],[.8,.47]],[[.14,.12],[.14,.86],[.9,.86]]],
+  'ㅍ':[[[.08,.14],[.92,.14]],[[.34,.14],[.3,.84]],[[.66,.14],[.7,.84]],[[.04,.86],[.96,.86]]],
+  'ㅎ':[[[.4,.02],[.62,.1]],[[.12,.25],[.88,.25]],{c:[.5,.66,.27]}],
+  'ㅏ':[[[.36,0],[.36,1]],[[.36,.46],[.84,.46]]],
+  'ㅑ':[[[.36,0],[.36,1]],[[.36,.34],[.84,.34]],[[.36,.6],[.84,.6]]],
+  'ㅓ':[[[.18,.46],[.66,.46]],[[.66,0],[.66,1]]],
+  'ㅕ':[[[.18,.34],[.66,.34]],[[.18,.6],[.66,.6]],[[.66,0],[.66,1]]],
+  'ㅣ':[[[.5,0],[.5,1]]],
+  'ㅗ':[[[.5,.1],[.5,.62]],[[0,.66],[1,.66]]],
+  'ㅜ':[[[0,.3],[1,.3]],[[.5,.32],[.5,1]]],
+};
+// Syllable-block slot boxes [x0,y0,x1,y1] in the glyph area.
+const LAYOUT = {
+  V:  {I:[.02,.1,.5,.9],   V:[.6,0,.98,1]},
+  VF: {I:[.04,.02,.52,.54], V:[.6,0,.98,.6],  F:[.12,.66,.88,.98]},
+  HF: {I:[.22,0,.78,.32],   V:[0,.36,1,.62],  F:[.22,.68,.78,.98]},
+};
+const LEVELS = [
+  {syl:'닥', rom:'dak', mean:'paper mulberry', lay:'VF',
+   parts:[['ㄷ','I'],['ㅏ','V'],['ㄱ','F']], decoys:[], flipped:[],
+   tip:'Drag every sheet onto the lattice window. Watch the strokes layer into one letter.',
+   note:'Hanji begins as the inner bark of the 닥나무, the paper mulberry. The bark is steamed, peeled, and bleached in the sun and snow.'},
+  {syl:'물', rom:'mul', mean:'water', lay:'HF',
+   parts:[['ㅁ','I'],['ㅜ','V'],['ㄹ','F']], decoys:[], flipped:['ㄹ'],
+   tip:'One sheet lies face-down. Its ink shows faintly and mirrored. Tap it to turn it over.',
+   note:'The bark is beaten into loose fibre and floated in cold water, thickened with 닥풀, a slippery root mucilage.'},
+  {syl:'결', rom:'gyeol', mean:'grain', lay:'VF',
+   parts:[['ㄱ','I'],['ㅕ','V'],['ㄹ','F']], decoys:[['ㅓ','V']], flipped:['ㅕ'],
+   tip:'Not every sheet belongs. Leave the stray one in the tray.',
+   note:'In 외발뜨기, the papermaker swings the screen side to side and front to back, so the fibres cross. The paper is strong in every direction.'},
+  {syl:'빛', rom:'bit', mean:'light', lay:'VF',
+   parts:[['ㅂ','I'],['ㅣ','V'],['ㅊ','F']], decoys:[['ㅈ','F'],['ㅍ','I']], flipped:['ㅊ','ㅂ'],
+   tip:'Hold 빛 (or Space) to shine light through. Face-down ink reads clearly in the glow.',
+   note:'Pasted onto a lattice window as 창호지, hanji softens daylight into a glow and lets the room breathe.'},
+  {syl:'한', rom:'han', mean:'Korean', lay:'VF',
+   parts:[['ㅎ','I'],['ㅏ','V'],['ㄴ','F']], decoys:[['ㅇ','I'],['ㄱ','F']], flipped:['ㅏ','ㄴ'],
+   tip:'Two strays, two sheets face-down. Read through the paper.',
+   note:'The 한 of 한지 comes from 韓, meaning Korea or Korean.'},
+  {syl:'지', rom:'ji', mean:'paper', lay:'V',
+   parts:[['ㅈ','I'],['ㅣ','V']], decoys:[['ㅊ','I'],['ㅓ','V'],['ㅅ','I']], flipped:['ㅈ','ㅣ'],
+   tip:'The last letter. Three strays hide among the sheets.',
+   note:'紙, paper. As the saying goes, 지천년 견오백: paper lasts a thousand years, silk five hundred.'},
+];
+
+/* =========================================================
+   Utilities
+   ========================================================= */
+const root = document.documentElement;
+const $ = id => document.getElementById(id);
+const cv = $('stage'), ctx = cv.getContext('2d');
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const easeOut = t => 1 - Math.pow(1-t,3);
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function rgba(hex,a){
+  hex = hex.replace('#','').trim();
+  if (hex.length===3) hex = hex.split('').map(c=>c+c).join('');
+  const n = parseInt(hex,16);
+  return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+const mk = (w,h) => { const c=document.createElement('canvas'); c.width=Math.max(1,Math.ceil(w)); c.height=Math.max(1,Math.ceil(h)); return c; };
+
+/* =========================================================
+   Palette (from CSS tokens)
+   ========================================================= */
+let PAL = {};
+const mq = matchMedia('(prefers-color-scheme: dark)');
+const isDark = () => root.dataset.theme ? root.dataset.theme==='dark' : mq.matches;
+function readPalette(){
+  const cs = getComputedStyle(root), g = n => cs.getPropertyValue(n).trim();
+  PAL = {
+    bg:g('--bg'), paper:g('--paper'), paperA:parseFloat(g('--paper-alpha')), paperShade:g('--paper-shade'),
+    fiber:g('--fiber'), fleck:g('--fleck'), ink:g('--ink'), wood:g('--wood'), woodDark:g('--wood-dark'),
+    seal:g('--seal'), glow:g('--glow'), glowBase:parseFloat(g('--glow-base')), litBoost:parseFloat(g('--lit-boost')),
+    shadow:g('--shadow'), shadowA:parseFloat(g('--shadow-alpha')),
+    text:g('--text'), muted:g('--muted'), vignette:g('--vignette'), serif:g('--serif'),
+  };
+}
+
+/* =========================================================
+   Layout
+   ========================================================= */
+let W=0, H=0, DPR=1, S=300, PS=348, fx=0, fy=0, rs=.4, portrait=false;
+let trayCols = 5;
+function layout(){
+  W = innerWidth; H = innerHeight; DPR = Math.min(2, window.devicePixelRatio||1);
+  cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
+  const top = $('top').getBoundingClientRect().bottom + 10;
+  const bot = $('controls').getBoundingClientRect().top - 10;
+  const avail = Math.max(200, bot - top);
+  portrait = W < 760 || W < H*1.05;
+  if (!portrait){
+    S = Math.min(avail - 44, W*.4, 620);
+    fx = W/2; fy = top + (avail - 26)/2;
+    const sideW = fx - S*.58;
+    rs = clamp(Math.min((sideW - 40)/(S*1.06), (avail - 40)/(3*S*1.06)), .2, .5);
+  } else {
+    const want = Math.min(W - 44, 560);
+    const fit = cols => {
+      const rows = Math.ceil(5/cols), cell = Math.min((W - 32 - (cols-1)*8)/cols, 120);
+      return {cols, cell, S:Math.max(150, Math.min(want, avail - rows*cell - (rows-1)*8 - 50))};
+    };
+    const three = fit(3), five = fit(5);
+    const pick = (three.S >= want*.92 || five.cell < 56) ? three : five;
+    trayCols = pick.cols; S = pick.S;
+    const cell = pick.cell, rows = Math.ceil(5/trayCols);
+    const block = S*1.06 + 30 + rows*cell + (rows-1)*8;
+    fx = W/2; fy = top + Math.max(4, (avail - block)*.4) + S*.53;
+    rs = cell/(S*1.06);
+  }
+  PS = S*1.16;
+}
+function homes(n){
+  const out = [];
+  if (!portrait){
+    const sideC = (fx - S*.58)/2 + 6;
+    const L = Math.ceil(n/2), R = n - L;
+    const gap = S*1.06*rs + 16;
+    for (let i=0;i<L;i++) out.push({x:sideC, y:fy + (i-(L-1)/2)*gap});
+    for (let i=0;i<R;i++) out.push({x:W - sideC, y:fy + (i-(R-1)/2)*gap});
+  } else {
+    const cols = trayCols, cell = S*1.06*rs, trayTop = fy + S*.53 + 30;
+    for (let k=0;k<n;k++){
+      const r = Math.floor(k/cols), inRow = Math.min(cols, n - r*cols), j = k - r*cols;
+      out.push({x:W/2 + (j-(inRow-1)/2)*(cell+8), y:trayTop + cell/2 + r*(cell+8)});
+    }
+  }
+  return out;
+}
+
+/* =========================================================
+   Brush — hand-drawn ink strokes
+   ========================================================= */
+function brush(c, pts, w, rng){
+  const L=[0];
+  for (let i=1;i<pts.length;i++) L.push(L[i-1] + Math.hypot(pts[i][0]-pts[i-1][0], pts[i][1]-pts[i-1][1]));
+  const tot = L[L.length-1]; if (tot < 1) return;
+  const step = Math.max(.45, w*.09), n = Math.ceil(tot/step);
+  const ph1=rng()*7, ph2=rng()*7, f1=1.5+rng()*2.5, samples=[];
+  let seg=0;
+  for (let k=0;k<=n;k++){
+    const d = k/n*tot, t = k/n;
+    while (seg < pts.length-2 && L[seg+1] < d) seg++;
+    const a=pts[seg], b=pts[seg+1], sl=(L[seg+1]-L[seg])||1, u=(d-L[seg])/sl;
+    const dx=(b[0]-a[0])/sl, dy=(b[1]-a[1])/sl;
+    const wob = (Math.sin(t*f1*6.28+ph1)*.6 + Math.sin(t*13+ph2)*.4) * w*.06;
+    const x = a[0]+(b[0]-a[0])*u - dy*wob, y = a[1]+(b[1]-a[1])*u + dx*wob;
+    let prof = 1;
+    if (t < .07) prof = .82 + t/.07*.48;            // brush touches down & presses
+    else if (t < .18) prof = 1.3 - (t-.07)/.11*.3;   // lifts slightly
+    else if (t > .8) prof = 1 - (t-.8)/.2*.5;        // tapers off
+    const dir = .8 + .3*Math.abs(dy);                 // verticals heavier than horizontals
+    samples.push({x,y,dx,dy,t,r:w*.5*prof*dir*(1+(rng()-.5)*.08)});
+  }
+  // ink bleed halo into the fibres
+  c.globalAlpha = .035;
+  for (const s of samples){ c.beginPath(); c.arc(s.x,s.y,s.r*1.5,0,6.283); c.fill(); }
+  // core
+  c.globalAlpha = 1;
+  for (const s of samples){ c.beginPath(); c.arc(s.x,s.y,s.r,0,6.283); c.fill(); }
+  // knuckle at corners
+  for (let i=1;i<pts.length-1;i++){ c.beginPath(); c.arc(pts[i][0],pts[i][1],w*.56,0,6.283); c.fill(); }
+  // 비백 — flying-white streaks where the brush runs dry
+  c.save(); c.globalCompositeOperation='destination-out'; c.lineCap='round';
+  const strands = 3 + Math.floor(rng()*4);
+  for (let j=0;j<strands;j++){
+    const o=(rng()-.5)*1.5, start=.5+rng()*.3;
+    c.globalAlpha=.3+rng()*.5; c.lineWidth=Math.max(.5, w*(.025+rng()*.05));
+    c.beginPath(); let first=true;
+    for (const s of samples){
+      if (s.t < start) continue;
+      const px=s.x - s.dy*o*s.r, py=s.y + s.dx*o*s.r;
+      if (first){ c.moveTo(px,py); first=false; } else c.lineTo(px,py);
+    }
+    c.stroke();
+  }
+  c.restore();
+}
+function circlePts(cx,cy,r){
+  const out=[]; const a0=-Math.PI/2-.25, span=Math.PI*2+.45;
+  for (let i=0;i<=44;i++){ const a=a0 - span*i/44; out.push([cx+Math.cos(a)*r, cy+Math.sin(a)*r]); }
+  return out;
+}
+// parts: [[jamo, slot], ...]; draws a syllable (or fragment) into area (ox,oy,G)
+function drawGlyph(c, parts, lay, ox, oy, G, w, seed, color){
+  const rng = mulberry32(seed);
+  c.fillStyle = color;
+  for (const [ch,slot] of parts){
+    const b = LAYOUT[lay][slot], bw=b[2]-b[0], bh=b[3]-b[1];
+    const map = p => [ox + (b[0]+p[0]*bw)*G, oy + (b[1]+p[1]*bh)*G];
+    for (const st of J[ch]){
+      let pts;
+      if (st.c){
+        const [cx,cy,r] = st.c;
+        pts = circlePts(0,0,1).map(p => map([cx + p[0]*r*Math.min(1,bh/bw), cy + p[1]*r*Math.min(1,bw/bh)]));
+      } else pts = st.map(map);
+      brush(c, pts, w, rng);
+    }
+  }
+  c.globalAlpha = 1;
+}
+
+/* =========================================================
+   Paper — deckle edges, fibres, translucency
+   ========================================================= */
+function deckle(seed){
+  const r=mulberry32(seed^0x51ed), h=S*.53, c=PS/2, amp=S*.0075, per=64, pts=[];
+  const ph=[r()*6.28,r()*6.28,r()*6.28,r()*6.28];
+  for (let side=0;side<4;side++){
+    for (let i=0;i<per;i++){
+      const t=i/per; let x,y,nx,ny;
+      if (side===0){x=-h+2*h*t;y=-h;nx=0;ny=-1;}
+      else if (side===1){x=h;y=-h+2*h*t;nx=1;ny=0;}
+      else if (side===2){x=h-2*h*t;y=h;nx=0;ny=1;}
+      else {x=-h;y=h-2*h*t;nx=-1;ny=0;}
+      const corner=Math.min(t,1-t), cf = corner<.05 ? -(.05-corner)/.05*amp*1.8 : 0;
+      const o=(Math.sin(t*9.4+ph[side])*.5 + Math.sin(t*23+ph[(side+1)%4])*.25 + (r()-.5)*.9)*amp + cf;
+      pts.push([c+x+nx*o, c+y+ny*o]);
+    }
+  }
+  return pts;
+}
+const tracePoly = (c,poly) => { c.beginPath(); c.moveTo(poly[0][0],poly[0][1]); for (let i=1;i<poly.length;i++) c.lineTo(poly[i][0],poly[i][1]); c.closePath(); };
+
+function paperBase(c, poly, seed){
+  const r = mulberry32(seed^0xabc);
+  c.save();
+  tracePoly(c,poly);
+  c.globalAlpha = PAL.paperA; c.fillStyle = PAL.paper; c.fill();
+  c.clip();
+  // cloudy formation — uneven fibre density, as in real hand-formed sheets
+  for (let i=0;i<30;i++){
+    const x=r()*PS, y=r()*PS, rad=PS*(.04+r()*.14);
+    const g=c.createRadialGradient(x,y,0,x,y,rad);
+    const dark = r()<.6;
+    g.addColorStop(0, dark ? rgba(PAL.paperShade,.08+r()*.1) : rgba(PAL.paper,.25));
+    g.addColorStop(1, rgba(PAL.paperShade,0));
+    c.globalAlpha=1; c.fillStyle=g; c.fillRect(x-rad,y-rad,rad*2,rad*2);
+  }
+  c.restore();
+  // thin, translucent deckle edge
+  c.save(); tracePoly(c,poly);
+  c.globalCompositeOperation='destination-out'; c.globalAlpha=.28; c.lineWidth=S*.018; c.stroke();
+  c.globalCompositeOperation='source-over'; c.globalAlpha=.3; c.lineWidth=.8; c.strokeStyle=PAL.paperShade; c.stroke();
+  c.restore();
+}
+function paperFibers(c, poly, seed){
+  const r = mulberry32(seed^0x9e37);
+  c.save(); tracePoly(c,poly); c.clip();
+  c.strokeStyle = PAL.fiber; c.lineCap='round';
+  const n = Math.round(160 + S*.25);
+  for (let i=0;i<n;i++){
+    const x=r()*PS, y=r()*PS, len=S*(.01+r()*r()*.08), a=r()*6.283, cu=(r()-.5)*len*.8;
+    c.globalAlpha=.1+r()*.32; c.lineWidth=.35+r()*.9;
+    const ex=Math.cos(a)*len, ey=Math.sin(a)*len;
+    c.beginPath(); c.moveTo(x-ex/2,y-ey/2); c.quadraticCurveTo(x - ey/len*cu, y + ex/len*cu, x+ex/2, y+ey/2); c.stroke();
+  }
+  // bark flecks (티)
+  c.fillStyle = PAL.fleck;
+  for (let i=0;i<14;i++){
+    c.globalAlpha=.15+r()*.4;
+    c.beginPath(); c.ellipse(r()*PS, r()*PS, .5+r()*1.8, .4+r()*.8, r()*3.14, 0, 6.283); c.fill();
+  }
+  c.restore();
+  // stray fibres escaping the deckle
+  c.save(); c.strokeStyle=PAL.fiber; c.lineWidth=.6;
+  for (let i=0;i<34;i++){
+    const p = poly[Math.floor(r()*poly.length)], dx=p[0]-PS/2, dy=p[1]-PS/2, d=Math.hypot(dx,dy)||1;
+    const len = 2 + r()*S*.018, bend=(r()-.5)*4;
+    c.globalAlpha=.25+r()*.3;
+    c.beginPath(); c.moveTo(p[0]-dx/d*2, p[1]-dy/d*2);
+    c.quadraticCurveTo(p[0]+dx/d*len*.5 - dy/d*bend, p[1]+dy/d*len*.5 + dx/d*bend, p[0]+dx/d*len, p[1]+dy/d*len); c.stroke();
+  }
+  c.restore();
+}
+function makeShadow(poly){
+  const pad = S*.09, size = PS + pad*2, c = mk(size*DPR, size*DPR), x = c.getContext('2d');
+  x.setTransform(DPR,0,0,DPR,0,0);
+  x.shadowColor = `rgba(${PAL.shadow},1)`; x.shadowBlur = S*.03*DPR;
+  x.shadowOffsetX = 10000*DPR; x.translate(pad - 10000, pad);
+  tracePoly(x,poly); x.fillStyle='#000'; x.fill();
+  return {c, pad};
+}
+
+/* =========================================================
+   Sheets
+   ========================================================= */
+const glyphArea = () => ({ox:(PS-S)/2 + S*.12, oy:(PS-S)/2 + S*.12, G:S*.76});
+function buildSheetArt(s){
+  const px = PS*DPR, poly = deckle(s.seed);
+  const ink = mk(px,px), ic = ink.getContext('2d'); ic.setTransform(DPR,0,0,DPR,0,0);
+  if (s.kind === 'finale'){
+    const G2 = S*.4, w = S*.03;
+    drawGlyph(ic, [['ㅎ','I'],['ㅏ','V'],['ㄴ','F']], 'VF', PS/2 - G2 - S*.02, PS/2 - G2/2, G2, w, s.seed+3, PAL.ink);
+    drawGlyph(ic, [['ㅈ','I'],['ㅣ','V']], 'V', PS/2 + S*.03, PS/2 - G2/2, G2, w, s.seed+9, PAL.ink);
+  } else {
+    const g = glyphArea();
+    drawGlyph(ic, [[s.ch, s.slot]], s.lay, g.ox, g.oy, g.G, S*.044, s.seed+7, PAL.ink);
+  }
+  const front = mk(px,px), fc = front.getContext('2d'); fc.setTransform(DPR,0,0,DPR,0,0);
+  paperBase(fc, poly, s.seed);
+  fc.globalAlpha=.94; fc.drawImage(ink,0,0,PS,PS); fc.globalAlpha=1;
+  paperFibers(fc, poly, s.seed);
+
+  const back = mk(px,px), bc = back.getContext('2d'); bc.setTransform(-DPR,0,0,DPR,px,0);
+  paperBase(bc, poly, s.seed); paperFibers(bc, poly, s.seed);
+
+  // ink seen through the back: mirrored and softened
+  const bink = mk(px,px), bk = bink.getContext('2d');
+  bk.setTransform(-1,0,0,1,px,0);
+  const o = 1.4*DPR;
+  for (const [dx,dy] of [[0,0],[o,0],[-o,0],[0,o],[0,-o]]){ bk.globalAlpha=.24; bk.drawImage(ink,dx,dy); }
+
+  s.art = {front, back, bink, ink, shadow:makeShadow(poly)};
+}
+let seedCounter = 1;
+function makeSheet(it, lay){
+  const base = (Math.random()-.5)*.36;
+  const s = {
+    kind:'jamo', ch:it.ch, slot:it.slot, lay, correct:it.correct, flip:it.flip,
+    ang: it.flip ? Math.PI : 0, seed: (seedCounter++ * 7919 + Math.floor(Math.random()*1e5)) | 0,
+    x:0,y:0,tx:0,ty:0, base, rot:base, trot:base, scale:rs, tscale:rs,
+    lift:0, tlift:.12, alpha:0, talpha:1, inFrame:false, inA:0, z:zTop++, tilt:0, vx:0, hoverA:0, delay:0, home:null, art:null,
+  };
+  buildSheetArt(s);
+  return s;
+}
+
+/* =========================================================
+   Background, lattice, ghost, seal
+   ========================================================= */
+const bgC = document.createElement('canvas');
+function buildBg(){
+  bgC.width = Math.round(W*DPR); bgC.height = Math.round(H*DPR);
+  const b = bgC.getContext('2d'); b.setTransform(DPR,0,0,DPR,0,0);
+  b.fillStyle = PAL.bg; b.fillRect(0,0,W,H);
+  const r = mulberry32(77);
+  for (let i=0;i<36;i++){
+    const x=r()*W, y=r()*H, rad=40+r()*180, g=b.createRadialGradient(x,y,0,x,y,rad);
+    g.addColorStop(0, rgba(PAL.paperShade,.04+r()*.05)); g.addColorStop(1, rgba(PAL.paperShade,0));
+    b.fillStyle=g; b.fillRect(x-rad,y-rad,rad*2,rad*2);
+  }
+  b.strokeStyle = PAL.fiber; b.lineCap='round';
+  const nf = Math.floor(W*H/2600);
+  for (let i=0;i<nf;i++){
+    const x=r()*W, y=r()*H, len=6+r()*r()*40, a=r()*6.283, cu=(r()-.5)*len*.7;
+    b.globalAlpha=.05+r()*.1; b.lineWidth=.4+r()*.6;
+    const ex=Math.cos(a)*len, ey=Math.sin(a)*len;
+    b.beginPath(); b.moveTo(x,y); b.quadraticCurveTo(x+ex/2-ey/len*cu, y+ey/2+ex/len*cu, x+ex, y+ey); b.stroke();
+  }
+  b.fillStyle = PAL.fleck;
+  for (let i=0;i<nf/8;i++){ b.globalAlpha=.06+r()*.12; b.beginPath(); b.arc(r()*W, r()*H, .4+r()*1.1, 0, 6.283); b.fill(); }
+  b.globalAlpha = 1;
+  const g = b.createRadialGradient(W/2,H/2,Math.min(W,H)*.3, W/2,H/2, Math.max(W,H)*.75);
+  g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,PAL.vignette);
+  b.fillStyle=g; b.fillRect(0,0,W,H);
+}
+
+const latC = document.createElement('canvas'); let latL = 0;
+function buildLattice(){
+  const pad = S*.05; latL = S + pad*2;
+  latC.width = latC.height = Math.ceil(latL*DPR);
+  const c = latC.getContext('2d'); c.setTransform(DPR,0,0,DPR,0,0); c.translate(latL/2, latL/2);
+  const r = mulberry32(4242), h=S/2, b=S*.045, bw=Math.max(2,S*.012), inner=h-b;
+  c.fillStyle = rgba(PAL.paperShade,.2); c.fillRect(-inner,-inner,inner*2,inner*2);
+  // wobbly hand-cut bar
+  const bar = (x0,y0,x1,y1,grain) => {
+    const j = Math.min(x1-x0,y1-y0)*.14, horiz = (x1-x0) > (y1-y0);
+    const n = Math.max(2, Math.round((horiz ? x1-x0 : y1-y0)/18)), pts=[];
+    for (let i=0;i<=n;i++){ const t=i/n; pts.push(horiz ? [x0+(x1-x0)*t, y0+(r()-.5)*j] : [x1+(r()-.5)*j, y0+(y1-y0)*t]); }
+    for (let i=n;i>=0;i--){ const t=i/n; pts.push(horiz ? [x0+(x1-x0)*t, y1+(r()-.5)*j] : [x0+(r()-.5)*j, y0+(y1-y0)*t]); }
+    c.fillStyle = PAL.wood; tracePoly(c,pts); c.fill();
+    c.strokeStyle = PAL.woodDark; c.lineWidth = .8;
+    c.globalAlpha = .45; c.beginPath();
+    if (horiz){ c.moveTo(x0,y1); c.lineTo(x1,y1); } else { c.moveTo(x1,y0); c.lineTo(x1,y1); }
+    c.stroke();
+    if (grain){
+      for (let k=0;k<grain;k++){
+        c.globalAlpha=.18+r()*.2; c.lineWidth=.5+r()*.6; c.beginPath();
+        const off = .2+r()*.6, ph=r()*6;
+        for (let i=0;i<=24;i++){ const t=i/24;
+          const x = horiz ? x0+(x1-x0)*t : x0+(x1-x0)*off + Math.sin(t*9+ph)*1.2;
+          const y = horiz ? y0+(y1-y0)*off + Math.sin(t*9+ph)*1.2 : y0+(y1-y0)*t;
+          i ? c.lineTo(x,y) : c.moveTo(x,y); }
+        c.stroke();
+      }
+    }
+    c.globalAlpha = 1;
+  };
+  // 띠살 — vertical slats with banded horizontal rails
+  for (let i=1;i<8;i++){ const x=-inner + i*(inner*2/8); bar(x-bw/2,-inner,x+bw/2,inner,0); }
+  for (const cy of [-inner*.74, 0, inner*.74]){
+    for (let k=-1;k<=1;k++){ const y=cy + k*bw*2.5; bar(-inner,y-bw/2,inner,y+bw/2,0); }
+  }
+  bar(-h,-h,h,-h+b,3); bar(-h,h-b,h,h,3); bar(-h,-h+b,-h+b,h-b,3); bar(h-b,-h+b,h,h-b,3);
+}
+
+const ghostC = document.createElement('canvas');
+function buildGhost(lv){
+  ghostC.width = ghostC.height = Math.ceil(PS*DPR);
+  const c = ghostC.getContext('2d'); c.setTransform(DPR,0,0,DPR,0,0);
+  if (!lv) return;
+  const g = glyphArea();
+  drawGlyph(c, lv.parts, lv.lay, g.ox, g.oy, g.G, S*.03, 99, PAL.seal);
+}
+
+function makeSeal(text){
+  const ss = S*.13, size = ss*1.15, c = mk(size*DPR, size*DPR), x = c.getContext('2d');
+  x.setTransform(DPR,0,0,DPR,0,0);
+  const r = mulberry32(text.charCodeAt(0)), m=(size-ss)/2, pts=[];
+  const side=(ax,ay,bx,by)=>{ for(let i=0;i<8;i++){const t=i/8; pts.push([ax+(bx-ax)*t+(r()-.5)*ss*.03, ay+(by-ay)*t+(r()-.5)*ss*.03]);} };
+  side(m,m,m+ss,m); side(m+ss,m,m+ss,m+ss); side(m+ss,m+ss,m,m+ss); side(m,m+ss,m,m);
+  x.fillStyle = PAL.seal; tracePoly(x,pts); x.fill();
+  x.globalCompositeOperation='destination-out';
+  x.lineWidth = ss*.03; x.strokeRect(m+ss*.09, m+ss*.09, ss*.82, ss*.82);
+  x.textAlign='center'; x.textBaseline='middle';
+  if (text.length > 1){
+    x.font = `${ss*.36}px ${PAL.serif}`;
+    x.fillText(text[0], size/2, size/2 - ss*.19); x.fillText(text[1], size/2, size/2 + ss*.2);
+  } else { x.font = `${ss*.6}px ${PAL.serif}`; x.fillText(text, size/2, size/2 + ss*.03); }
+  for (let i=0;i<110;i++){ x.globalAlpha=.25+r()*.6; x.beginPath(); x.arc(m+r()*ss, m+r()*ss, .3+r()*ss*.014, 0, 6.283); x.fill(); }
+  return {c, size};
+}
+
+/* =========================================================
+   Sound — synthesized paper rustle & soft gayageum-like plucks
+   ========================================================= */
+let AC=null, noiseBuf=null, soundOn=true;
+function ensureAudio(){
+  if (AC){ if (AC.state==='suspended') AC.resume(); return; }
+  try{
+    AC = new (window.AudioContext||window.webkitAudioContext)();
+    noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+    const d = noiseBuf.getChannelData(0); let last=0;
+    for (let i=0;i<d.length;i++){ const w=Math.random()*2-1; last = last*.6 + w*.4; d[i] = (Math.random()<.02 ? w*1.6 : last); }
+  }catch(e){ AC=null; }
+}
+function rustle(delay, dur, freq, gain, q=.9){
+  if (!AC || !soundOn) return;
+  const t=AC.currentTime+delay, src=AC.createBufferSource(), bp=AC.createBiquadFilter(), g=AC.createGain();
+  src.buffer=noiseBuf; bp.type='bandpass'; bp.frequency.value=freq; bp.Q.value=q;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(gain,t+.012); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  src.connect(bp).connect(g).connect(AC.destination); src.start(t, Math.random()*.5); src.stop(t+dur+.05);
+}
+function pluck(delay, f, dur, gain, type='triangle'){
+  if (!AC || !soundOn) return;
+  const t=AC.currentTime+delay, o=AC.createOscillator(), g=AC.createGain(), lp=AC.createBiquadFilter();
+  o.type=type; o.frequency.setValueAtTime(f*1.01,t); o.frequency.exponentialRampToValueAtTime(f,t+.08);
+  lp.type='lowpass'; lp.frequency.value=f*4;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(gain,t+.008); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(lp).connect(g).connect(AC.destination); o.start(t); o.stop(t+dur+.05);
+}
+function sfx(k){
+  switch(k){
+    case 'lift':  rustle(0,.14,3200,.05); break;
+    case 'drop':  rustle(0,.22,1700,.06); break;
+    case 'snap':  rustle(0,.12,900,.09,.6); pluck(0,98,.25,.05,'sine'); break;
+    case 'flip':  rustle(0,.09,3600,.05); rustle(.11,.16,2200,.07); break;
+    case 'drip':  pluck(0,880,.18,.025,'sine'); break;
+    case 'hint':  pluck(0,523.25,.6,.03); pluck(.09,659.25,.7,.025); break;
+    case 'wrong': rustle(0,.3,600,.07,.5); pluck(0,196,.4,.035,'sine'); break;
+    case 'chime': [392,440,523.25,587.33,659.25,783.99].forEach((f,i)=>pluck(i*.11,f,1.6,.045)); break;
+    case 'stamp': pluck(0,130,.3,.08,'sine'); rustle(0,.08,500,.1,.5); break;
+  }
+}
+
+/* =========================================================
+   State
+   ========================================================= */
+let li=0, state='play', sheets=[], zTop=1, drag=null, hover=null, runTok=0;
+let light=0, lightOn=false, solveGlow=0, fuse=0, hintT=0, shake=0, frameActive=0, framePulse=0, seal=null;
+const done = new Array(LEVELS.length).fill(false);
+const pointer = {x:-999, y:-999, vx:0, vy:0, moved:false};
+let fibers=[], ripples=[], parts=[];
+
+function startLevel(i){
+  runTok++;
+  li=i; state='play'; hintT=0; seal=null; drag=null; hover=null;
+  const lv = LEVELS[i], items=[];
+  lv.parts.forEach(([ch,slot]) => items.push({ch,slot,correct:true, flip:lv.flipped.includes(ch)}));
+  lv.decoys.forEach(([ch,slot]) => items.push({ch,slot,correct:false, flip:Math.random()<.4}));
+  shuffle(items);
+  sheets = items.map(it => makeSheet(it, lv.lay));
+  const hs = homes(sheets.length);
+  sheets.forEach((s,k) => {
+    s.home = hs[k]; s.x = s.home.x + (Math.random()-.5)*60; s.y = H + S*.4;
+    s.tx = s.home.x; s.ty = s.home.y; s.delay = .12 + k*.09;
+  });
+  buildGhost(lv); updateClue(); updateProgress(); hideCard();
+  $('resetBtn').disabled = false; $('hintBtn').disabled = false;
+}
+function startFinale(){
+  runTok++;
+  state='finale'; seal=null;
+  const s = {
+    kind:'finale', correct:true, flip:false, ang:0, seed:2024, x:fx, y:H+S*.6, tx:fx, ty:fy,
+    base:0, rot:.2, trot:0, scale:1, tscale:1, lift:.6, tlift:.05, alpha:0, talpha:1, inFrame:true, inA:1,
+    z:zTop++, tilt:0, vx:0, hoverA:0, delay:.1, home:{x:fx,y:fy}, art:null,
+  };
+  buildSheetArt(s); sheets=[s]; buildGhost(null);
+  const tok = runTok;
+  setTimeout(() => { if (tok!==runTok) return; burst(); sfx('chime'); }, 700);
+  setTimeout(() => { if (tok!==runTok) return; seal = {text:'한지', ...makeSeal('한지'), t:0, fade:false}; sfx('stamp'); }, 1200);
+  setTimeout(() => { if (tok!==runTok) return; showCard('finale'); }, 1500);
+  updateClue(); updateProgress();
+  $('resetBtn').disabled = true; $('hintBtn').disabled = true;
+}
+
+function solve(){
+  state='solved'; done[li]=true;
+  const tok = runTok;
+  sheets.forEach(s => { if (!s.correct){ s.talpha=0; s.ty = s.y + 40; } });
+  $('resetBtn').disabled = true; $('hintBtn').disabled = true;
+  sfx('snap');
+  setTimeout(() => { if (tok!==runTok) return; burst(); sfx('chime'); }, 300);
+  setTimeout(() => { if (tok!==runTok) return; seal = {text:LEVELS[li].syl, ...makeSeal(LEVELS[li].syl), t:0, fade:false}; sfx('stamp'); updateProgress(); }, 800);
+  setTimeout(() => { if (tok!==runTok) return; showCard('solved'); }, 1100);
+}
+function advance(){
+  if (state==='finale'){ done.fill(false); startLevel(0); sfx('drop'); return; }
+  if (state!=='solved') return;
+  state='transition'; hideCard(); sfx('drop');
+  if (seal) seal.fade = true;
+  sheets.forEach(s => { s.talpha=0; s.ty = fy - S*.35; s.tlift=.7; s.inFrame=false; });
+  const tok = ++runTok;
+  setTimeout(() => { if (tok!==runTok) return; li+1 < LEVELS.length ? startLevel(li+1) : startFinale(); }, 650);
+}
+
+function checkSolved(){
+  if (state!=='play' || drag || !sheets.length) return;
+  for (const s of sheets){
+    if (s.delay > 0) return;
+    if (s.correct){
+      if (!s.inFrame || s.flip || s.ang > .15 || Math.hypot(s.x-fx, s.y-fy) > 3) return;
+    } else if (s.inFrame) return;
+  }
+  solve();
+}
+let fbTimer = 0;
+function scheduleFeedback(){
+  clearTimeout(fbTimer);
+  fbTimer = setTimeout(() => {
+    if (state!=='play' || drag) return;
+    const lv = LEVELS[li], inF = sheets.filter(s=>s.inFrame), need = lv.parts.length;
+    if (inF.length < need) return;
+    const strays = inF.filter(s=>!s.correct).length;
+    const allIn = sheets.filter(s=>s.correct).every(s=>s.inFrame);
+    const backwards = inF.filter(s=>s.correct && s.flip).length;
+    if (strays && allIn){ toast(`A stray sheet is in the window. Its strokes aren't part of “${lv.rom}”.`); shake=1; sfx('wrong'); }
+    else if (strays){ toast('Something in the window doesn’t belong.'); shake=.7; sfx('wrong'); }
+    else if (backwards && allIn){ toast(backwards>1 ? `${backwards} sheets read backwards. Tap to turn them over.` : 'One sheet reads backwards. Tap it to turn it over.'); shake=.5; }
+  }, 650);
+}
+
+/* =========================================================
+   Particles — ambient fibres, ripples, bursts
+   ========================================================= */
+function seedFibers(){
+  const n = Math.round(clamp(W*H/22000, 18, 60)), r=Math.random;
+  fibers = Array.from({length:n}, () => ({
+    x:r()*W, y:r()*H, vx:0, vy:0, dx:(r()-.5)*.12, dy:-.04-r()*.1, a:r()*6.28, va:(r()-.5)*.004,
+    len:5+r()*14, cu:(r()-.5)*6, ph:r()*6.28,
+  }));
+}
+function burst(){
+  const r=Math.random;
+  for (let i=0;i<70;i++){
+    const side=Math.floor(r()*4), t=r()*2-1, h=S*.53;
+    const x = fx + (side<2 ? t*h : (side===2?-h:h)), y = fy + (side<2 ? (side===0?-h:h) : t*h);
+    const dx=x-fx, dy=y-fy, d=Math.hypot(dx,dy)||1, sp=.6+r()*2.2;
+    parts.push({x,y, vx:dx/d*sp, vy:dy/d*sp - .6, a:r()*6.28, va:(r()-.5)*.1, len:4+r()*12, life:0, max:1.4+r()*1.4, mote:r()<.45, cu:(r()-.5)*5});
+  }
+}
+function ripple(x,y){ ripples.push({x,y,t:0}); if (ripples.length>8) ripples.shift(); sfx('drip'); }
+
+/* =========================================================
+   Update
+   ========================================================= */
+function nearFrame(x,y){ return Math.hypot(x-fx, y-fy) < S*.4; }
+let time=0;
+function update(dt){
+  const a = k => 1 - Math.pow(1-k, dt*60);
+  light += ((lightOn?1:0) - light)*a(.12);
+  solveGlow += (((state==='solved'||state==='finale')?1:0) - solveGlow)*a(.04);
+  fuse += ((state==='solved'||state==='transition'?1:0) - fuse)*a(.05);
+  hintT = Math.max(0, hintT-dt);
+  shake = Math.max(0, shake - dt*2.4);
+  framePulse = Math.max(0, framePulse - dt*1.8);
+  const fa = drag && drag.moved && nearFrame(drag.s.tx, drag.s.ty) ? 1 : (drag && drag.moved ? .35 : 0);
+  frameActive += (fa - frameActive)*a(.15);
+
+  for (const s of sheets){
+    if (s.delay > 0){ s.delay -= dt; continue; }
+    const dragging = drag && drag.s===s;
+    if (dragging){
+      const d = Math.hypot(pointer.x-fx, pointer.y-fy);
+      const k = clamp(1 - (d - S*.3)/(S*.95), 0, 1);
+      const base = Math.min(1, rs*1.18);
+      s.tscale = base + (1-base)*easeOut(k);
+      s.tx = pointer.x - drag.lx*s.scale; s.ty = pointer.y - drag.ly*s.scale;
+      s.trot = s.base*(1-k); s.tlift = 1;
+    } else if (state==='play'){
+      s.tlift = s.inFrame ? .04 : (s===hover ? .55 : .12);
+    }
+    const px=s.x, kp = dragging ? .42 : .13;
+    s.x += (s.tx-s.x)*a(kp); s.y += (s.ty-s.y)*a(kp);
+    s.vx = (s.x-px)/(dt*60||1);
+    s.rot += (s.trot-s.rot)*a(.14);
+    s.scale += (s.tscale-s.scale)*a(.16);
+    s.ang += ((s.flip?Math.PI:0) - s.ang)*a(.13);
+    s.lift += (s.tlift-s.lift)*a(.15);
+    s.alpha += (s.talpha-s.alpha)*a(.1);
+    const flutter = dragging ? Math.sin(time*8 + s.seed)*.014*Math.min(1, Math.abs(s.vx)*.25) : 0;
+    s.tilt += (clamp(s.vx*.012,-.28,.28) + flutter - s.tilt)*a(.2);
+    s.hoverA += ((s===hover && !drag && state==='play' ? 1 : 0) - s.hoverA)*a(.2);
+    s.inA += ((s.inFrame?1:0) - s.inA)*a(.1);
+  }
+
+  // ambient fibres drift, pushed by the cursor and by ripples
+  for (const f of fibers){
+    f.vx += (f.dx - f.vx)*a(.01); f.vy += (f.dy - f.vy)*a(.01);
+    if (pointer.moved){
+      const dx=f.x-pointer.x, dy=f.y-pointer.y, d=Math.hypot(dx,dy);
+      if (d < 110){ const k=(1-d/110); f.vx += pointer.vx*.03*k + dx/(d||1)*.15*k; f.vy += pointer.vy*.03*k + dy/(d||1)*.15*k; f.va += (Math.random()-.5)*.01*k; }
+    }
+    for (const r of ripples){
+      const dx=f.x-r.x, dy=f.y-r.y, d=Math.hypot(dx,dy)||1, R=10+r.t*130;
+      if (Math.abs(d-R) < 22){ const k=(1-r.t/1.4)*.5; f.vx+=dx/d*k; f.vy+=dy/d*k; }
+    }
+    f.x += f.vx*dt*60; f.y += f.vy*dt*60; f.a += f.va*dt*60; f.va *= .99;
+    if (f.x < -20) f.x = W+20; if (f.x > W+20) f.x = -20;
+    if (f.y < -20) f.y = H+20; if (f.y > H+20) f.y = -20;
+  }
+  pointer.moved = false; pointer.vx *= .5; pointer.vy *= .5;
+  for (const r of ripples) r.t += dt;
+  ripples = ripples.filter(r => r.t < 1.4);
+  for (const p of parts){ p.life += dt; p.x += p.vx*dt*60; p.y += p.vy*dt*60; p.vx *= .985; p.vy = p.vy*.985 - .006; p.a += p.va; }
+  parts = parts.filter(p => p.life < p.max);
+  if (seal){ seal.t += dt; if (seal.fade){ seal.a = (seal.a ?? 1) - dt*3; if (seal.a <= 0) seal = null; } }
+  checkSolved();
+}
+
+/* =========================================================
+   Render
+   ========================================================= */
+function drawSheet(s, shx){
+  if (s.alpha < .01 || !s.art || s.delay > 0) return;
+  const A = s.art, cx = Math.cos(s.ang), front = cx >= 0, asx = Math.max(Math.abs(cx), .015);
+  const x = s.x + (s.inFrame ? shx : 0), y = s.y, sc = s.scale*(1 + s.lift*.035 + s.hoverA*.02), rot = s.rot + s.tilt;
+  // cast shadow, offset by height
+  const so = (2 + s.lift*16)*Math.max(.35, s.scale);
+  ctx.save();
+  ctx.globalAlpha = s.alpha * PAL.shadowA * (.45 + s.lift*.55);
+  ctx.translate(x + so*.45, y + so); ctx.rotate(rot); ctx.scale(sc*asx, sc);
+  const sp = PS + A.shadow.pad*2;
+  ctx.drawImage(A.shadow.c, -sp/2, -sp/2, sp, sp);
+  ctx.restore();
+  // the sheet itself
+  ctx.save();
+  ctx.globalAlpha = s.alpha;
+  ctx.translate(x, y); ctx.rotate(rot); ctx.scale(sc*asx, sc);
+  if (front) ctx.drawImage(A.front, -PS/2, -PS/2, PS, PS);
+  else {
+    ctx.drawImage(A.back, -PS/2, -PS/2, PS, PS);
+    ctx.globalAlpha = s.alpha * (.34 + light*.62);
+    ctx.drawImage(A.bink, -PS/2, -PS/2, PS, PS);
+  }
+  // sheen while turning / hovering / lit from behind
+  const sheen = Math.abs(Math.sin(s.ang))*.3 + s.hoverA*.07 + light*PAL.litBoost*(.35 + s.inA*.65) + solveGlow*PAL.litBoost*.6*s.inA;
+  if (sheen > .01){
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = s.alpha*Math.min(.6, sheen);
+    ctx.drawImage(front ? A.front : A.back, -PS/2, -PS/2, PS, PS);
+  }
+  ctx.restore();
+}
+
+function render(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation='source-over';
+  ctx.drawImage(bgC, 0, 0, W, H);
+  const shx = Math.sin(time*55)*shake*S*.014;
+
+  // light from behind the window
+  const gl = PAL.glowBase + light*.9 + solveGlow*.55 + framePulse*.15;
+  if (gl > .01){
+    const g = ctx.createRadialGradient(fx, fy, S*.1, fx, fy, S*1.05);
+    g.addColorStop(0, `rgba(${PAL.glow},${Math.min(.75, gl*.55)})`);
+    g.addColorStop(1, `rgba(${PAL.glow},0)`);
+    ctx.fillStyle = g; ctx.fillRect(fx - S*1.1, fy - S*1.1, S*2.2, S*2.2);
+    ctx.fillStyle = `rgba(${PAL.glow},${Math.min(.6, gl*.4)})`;
+    ctx.fillRect(fx - S*.455 + shx, fy - S*.455, S*.91, S*.91);
+  }
+
+  // ambient fibres
+  ctx.strokeStyle = PAL.fiber; ctx.lineWidth = .9; ctx.lineCap='round'; ctx.globalAlpha = .45;
+  ctx.beginPath();
+  for (const f of fibers){
+    const c=Math.cos(f.a)*f.len/2, s=Math.sin(f.a)*f.len/2;
+    ctx.moveTo(f.x-c, f.y-s); ctx.quadraticCurveTo(f.x - s/f.len*2*f.cu, f.y + c/f.len*2*f.cu, f.x+c, f.y+s);
+  }
+  ctx.stroke(); ctx.globalAlpha = 1;
+
+  // lattice window
+  ctx.drawImage(latC, fx - latL/2 + shx, fy - latL/2, latL, latL);
+
+  // frame cue while dragging
+  if (frameActive > .01 || framePulse > .01){
+    const o = S*.56 + framePulse*S*.05, l = S*.09;
+    ctx.strokeStyle = PAL.seal; ctx.lineWidth = 2.2; ctx.lineCap='round';
+    ctx.globalAlpha = Math.max(frameActive*.85, framePulse);
+    ctx.beginPath();
+    for (const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]]){
+      const cx = fx + sx*o + shx, cy = fy + sy*o, w = Math.sin(time*3 + sx + sy*2)*1.2;
+      ctx.moveTo(cx, cy - sy*l); ctx.quadraticCurveTo(cx + w, cy + w, cx - sx*l, cy);
+    }
+    ctx.stroke(); ctx.globalAlpha = 1;
+  }
+
+  // ripples on the paper
+  for (const r of ripples){
+    for (let k=0;k<2;k++){
+      const t = r.t - k*.18; if (t <= 0) continue;
+      const R = 10 + t*130, al = Math.max(0, 1 - t/1.25)*.4;
+      ctx.strokeStyle = PAL.fiber; ctx.globalAlpha = al; ctx.lineWidth = 1.3 - k*.4;
+      ctx.beginPath();
+      for (let i=0;i<=28;i++){
+        const a = i/28*6.283, rr = R + Math.sin(a*5 + r.x)*R*.03 + Math.sin(a*3 + r.y)*2;
+        const px = r.x + Math.cos(a)*rr, py = r.y + Math.sin(a)*rr;
+        i ? ctx.lineTo(px,py) : ctx.moveTo(px,py);
+      }
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // sheets, lowest first
+  const order = sheets.slice().sort((a,b) => (b.inFrame - a.inFrame) || (a.z - b.z));
+  if (drag){ const i = order.indexOf(drag.s); if (i>=0){ order.splice(i,1); order.push(drag.s); } }
+  for (const s of order) drawSheet(s, shx);
+
+  // once solved, the layers' ink fuses into one letter
+  if (fuse > .01){
+    ctx.globalAlpha = fuse*.88;
+    for (const s of sheets){
+      if (!s.correct || !s.art || Math.cos(s.ang) < .9) continue;
+      const sc = s.scale*(1 + s.lift*.035);
+      ctx.save(); ctx.globalAlpha = fuse*.88*s.alpha;
+      ctx.translate(s.x, s.y); ctx.rotate(s.rot + s.tilt); ctx.scale(sc, sc);
+      ctx.drawImage(s.art.ink, -PS/2, -PS/2, PS, PS);
+      ctx.restore();
+    }
+  }
+
+  // hint ghost
+  if (hintT > 0){
+    ctx.globalAlpha = Math.min(1, hintT/.6, (2.8-hintT)/.3)*.5;
+    ctx.drawImage(ghostC, fx - PS/2, fy - PS/2, PS, PS);
+    ctx.globalAlpha = 1;
+  }
+
+  // seal stamp
+  if (seal){
+    const k = Math.min(1, seal.t/.32), sc = 1.75 - .75*easeOut(k), al = k*(seal.a ?? 1);
+    ctx.save(); ctx.globalAlpha = al*.92;
+    ctx.translate(fx + S*.4, fy + S*.4); ctx.rotate(-.07); ctx.scale(sc,sc);
+    ctx.drawImage(seal.c, -seal.size/2, -seal.size/2, seal.size, seal.size);
+    ctx.restore();
+  }
+
+  // burst — fibres and motes of light
+  for (const p of parts){
+    const al = 1 - p.life/p.max;
+    if (p.mote){
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = `rgba(${PAL.glow},${al*.8})`;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 1.2 + p.len*.12, 0, 6.283); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+    } else {
+      ctx.strokeStyle = PAL.fiber; ctx.globalAlpha = al*.8; ctx.lineWidth = .9;
+      const c=Math.cos(p.a)*p.len/2, s=Math.sin(p.a)*p.len/2;
+      ctx.beginPath(); ctx.moveTo(p.x-c,p.y-s); ctx.quadraticCurveTo(p.x+p.cu, p.y-p.cu, p.x+c, p.y+s); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // layer count under the window
+  if (state==='play'){
+    const n = sheets.filter(s=>s.inFrame).length;
+    ctx.fillStyle = PAL.muted; ctx.font = `13px ${PAL.serif}`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(n ? `겹 ${n}  ·  ${n} layer${n>1?'s':''}` : '창호 · the window', fx, fy + S*.53 + 15);
+  }
+}
+
+/* =========================================================
+   Input
+   ========================================================= */
+function hit(p){
+  // tray sheets draw above the window stack, so they're hit first
+  const order = sheets.slice().sort((a,b) => (a.inFrame - b.inFrame) || (b.z - a.z));
+  for (const s of order){
+    if (s.alpha < .5 || s.delay > 0) continue;
+    const dx = p.x - s.x, dy = p.y - s.y, c = Math.cos(-s.rot), si = Math.sin(-s.rot);
+    const lx = (dx*c - dy*si)/(s.scale*Math.max(.25, Math.abs(Math.cos(s.ang)))), ly = (dx*si + dy*c)/s.scale;
+    const h = S*.53;
+    if (Math.abs(lx) < h && Math.abs(ly) < h) return s;
+  }
+  return null;
+}
+function flipSheet(s){
+  s.flip = !s.flip; s.tlift = .8; sfx('flip');
+  if (state==='play') scheduleFeedback();
+}
+cv.addEventListener('pointerdown', e => {
+  ensureAudio();
+  const p = {x:e.clientX, y:e.clientY};
+  pointer.x = p.x; pointer.y = p.y;
+  const s = hit(p);
+  if (s && state==='play'){
+    drag = {s, sx:p.x, sy:p.y, t:performance.now(), lx:(p.x-s.x)/s.scale, ly:(p.y-s.y)/s.scale, moved:false};
+    s.z = ++zTop; hover = s; sfx('lift');
+    try { cv.setPointerCapture(e.pointerId); } catch(_){}
+    cv.style.cursor = 'grabbing';
+  } else if (s && state==='finale'){
+    flipSheet(s);
+  } else ripple(p.x, p.y);
+});
+cv.addEventListener('pointermove', e => {
+  const nx=e.clientX, ny=e.clientY;
+  pointer.vx = nx - pointer.x; pointer.vy = ny - pointer.y; pointer.x = nx; pointer.y = ny; pointer.moved = true;
+  if (drag){
+    if (!drag.moved && Math.hypot(nx-drag.sx, ny-drag.sy) > 7){ drag.moved = true; drag.s.inFrame = false; }
+    return;
+  }
+  if (e.pointerType === 'mouse'){
+    const s = hit({x:nx, y:ny});
+    hover = (state==='play') ? s : null;
+    cv.style.cursor = s && (state==='play' || state==='finale') ? 'grab' : 'default';
+  }
+});
+function endDrag(){
+  if (!drag) return;
+  const s = drag.s, quick = performance.now() - drag.t < 380;
+  if (!drag.moved){
+    if (s.inFrame){ s.tx = fx; s.ty = fy; s.trot = 0; s.tscale = 1; }
+    else { s.tx = s.home.x; s.ty = s.home.y; s.trot = s.base; s.tscale = rs; }
+    if (quick) flipSheet(s);
+  } else if (nearFrame(s.tx, s.ty)){
+    s.inFrame = true; s.tx = fx; s.ty = fy; s.trot = 0; s.tscale = 1;
+    framePulse = 1; sfx('snap'); scheduleFeedback();
+  } else {
+    s.inFrame = false; s.tx = s.home.x; s.ty = s.home.y; s.trot = s.base; s.tscale = rs; sfx('drop');
+  }
+  drag = null;
+  cv.style.cursor = hover ? 'grab' : 'default';
+}
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+cv.addEventListener('pointerleave', e => { if (!drag) hover = null; });
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+// 빛 — hold to light
+const lightBtn = $('lightBtn');
+const setLight = on => { lightOn = on; lightBtn.classList.toggle('on', on); if (on){ ensureAudio(); rustle(0,.5,5200,.02,.4); } };
+lightBtn.addEventListener('pointerdown', e => { e.preventDefault(); setLight(true); try { lightBtn.setPointerCapture(e.pointerId); } catch(_){} });
+['pointerup','pointercancel','lostpointercapture'].forEach(ev => lightBtn.addEventListener(ev, () => setLight(false)));
+lightBtn.addEventListener('contextmenu', e => e.preventDefault());
+
+const hintBtn = $('hintBtn'), resetBtn = $('resetBtn'), soundBtn = $('soundBtn'), themeBtn = $('themeBtn');
+const doHint = () => { if (state!=='play') return; ensureAudio(); hintT = 2.8; sfx('hint'); };
+const doReset = () => { if (state!=='play') return; ensureAudio(); sfx('drop'); startLevel(li); };
+hintBtn.addEventListener('click', doHint);
+resetBtn.addEventListener('click', doReset);
+soundBtn.addEventListener('click', () => {
+  soundOn = !soundOn; soundBtn.setAttribute('aria-pressed', String(soundOn));
+  soundBtn.querySelector('.en').textContent = soundOn ? 'sound' : 'muted';
+  if (soundOn){ ensureAudio(); sfx('lift'); }
+});
+themeBtn.addEventListener('click', () => { root.dataset.theme = isDark() ? 'light' : 'dark'; applyTheme(); });
+$('nextBtn').addEventListener('click', () => { ensureAudio(); advance(); });
+
+addEventListener('keydown', e => {
+  if (e.code === 'Space'){ e.preventDefault(); if (!e.repeat) setLight(true); }
+  else if (e.repeat) return;
+  else if (e.key === 'h' || e.key === 'H') doHint();
+  else if (e.key === 'r' || e.key === 'R') doReset();
+  else if (e.key === 'n' || e.key === 'N' || (e.key === 'Enter' && !$('card').hidden && document.activeElement === document.body)) advance();
+});
+addEventListener('keyup', e => { if (e.code === 'Space') setLight(false); });
+addEventListener('blur', () => setLight(false));
+
+/* =========================================================
+   DOM UI
+   ========================================================= */
+let toastTimer = 0;
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.style.left = fx + 'px'; t.style.top = (fy + S*.3) + 'px';
+  t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+function updateClue(){
+  const c = $('clue');
+  c.classList.add('swap');
+  setTimeout(() => {
+    if (state === 'finale'){
+      $('clueLabel').textContent = '완성 · complete';
+      $('clueRom').textContent = 'hanji'; $('clueMean').textContent = 'Korean paper';
+      $('clueTip').textContent = 'Tap the sheet to turn it over. Hold 빛 to read it from behind.';
+    } else {
+      const lv = LEVELS[li];
+      $('clueLabel').textContent = `장 ${li+1} / ${LEVELS.length} · find the letter`;
+      $('clueRom').textContent = lv.rom; $('clueMean').textContent = lv.mean;
+      $('clueTip').textContent = lv.tip;
+    }
+    c.classList.remove('swap');
+    requestAnimationFrame(() => { const old = S; layout(); Math.abs(old - S) > 2 ? rebuildAll(true) : reposition(); });
+  }, 220);
+}
+function updateProgress(){
+  $('progress').innerHTML = LEVELS.map((lv,i) => {
+    const cls = done[i] ? 'done' : (i===li && state!=='finale' ? 'current' : '');
+    return `<div class="cell ${cls}" title="${done[i] ? lv.syl+' · '+lv.mean : 'sheet '+(i+1)}">${done[i] ? lv.syl : (i===li && state!=='finale' ? '?' : '')}</div>`;
+  }).join('');
+}
+function placeCard(){
+  const card = $('card');
+  const footTop = $('controls').getBoundingClientRect().top;
+  card.style.left = card.style.right = card.style.top = card.style.bottom = '';
+  const left = fx + S*.6 + 28, width = Math.min(320, W - left - 24);
+  if (!portrait && width >= 250){
+    card.style.left = left + 'px'; card.style.width = width + 'px';
+    card.style.top = Math.max(90, fy - card.offsetHeight/2) + 'px';
+  } else {
+    card.style.left = '12px'; card.style.right = '12px'; card.style.width = 'auto';
+    card.style.maxWidth = '440px'; card.style.marginInline = 'auto';
+    card.style.bottom = (H - footTop + 10) + 'px';
+  }
+}
+function showCard(kind){
+  const card = $('card');
+  if (kind === 'finale'){
+    $('cardSeal').textContent = '한지';
+    $('cardRom').textContent = 'hanji'; $('cardMean').textContent = 'Korean paper';
+    $('cardNote').textContent = 'Bark, water, grain and light, layered into 한지. Thin enough to read through, and still here a thousand years on.';
+    $('cardRow').innerHTML = LEVELS.map(l => `<span title="${l.rom} · ${l.mean}">${l.syl}</span>`).join('');
+    $('cardRow').style.display = '';
+    $('nextBtn').innerHTML = '<span class="ko">처음부터</span><span>· begin again</span>';
+  } else {
+    const lv = LEVELS[li];
+    $('cardSeal').textContent = lv.syl;
+    $('cardRom').textContent = lv.rom; $('cardMean').textContent = lv.mean;
+    $('cardNote').textContent = lv.note;
+    $('cardRow').style.display = 'none';
+    $('nextBtn').innerHTML = li+1 < LEVELS.length ? '<span class="ko">다음 장</span><span>· next sheet →</span>' : '<span class="ko">마무리</span><span>· finish →</span>';
+  }
+  card.hidden = false;
+  placeCard();
+  requestAnimationFrame(() => card.classList.add('show'));
+}
+function hideCard(){ const c=$('card'); c.classList.remove('show'); c.hidden = true; }
+function updateThemeBtn(){
+  const d = isDark();
+  themeBtn.querySelector('.ko').textContent = d ? '낮' : '밤';
+  themeBtn.querySelector('.en').textContent = d ? 'day' : 'night';
+}
+
+/* =========================================================
+   Build / resize / theme
+   ========================================================= */
+function rebuildAll(doReposition){
+  buildBg(); buildLattice();
+  for (const s of sheets) buildSheetArt(s);
+  buildGhost(state==='play' || state==='solved' ? LEVELS[li] : null);
+  if (seal){ const ns = makeSeal(seal.text); seal.c = ns.c; seal.size = ns.size; }
+  if (doReposition) reposition();
+}
+function reposition(){
+  const hs = homes(sheets.length);
+  sheets.forEach((s,k) => {
+    if (s.kind === 'finale'){ s.x=s.tx=fx; s.y=s.ty=fy; return; }
+    s.home = hs[k];
+    if (s.inFrame){ s.x=s.tx=fx; s.y=s.ty=fy; s.scale=s.tscale=1; }
+    else if (state==='play'){
+      s.tx=s.home.x; s.ty=s.home.y; s.scale=s.tscale=rs;
+      if (s.delay <= 0){ s.x=s.tx; s.y=s.ty; }
+    }
+  });
+  if (!$('card').hidden) placeCard();
+}
+function applyTheme(){ readPalette(); rebuildAll(false); updateThemeBtn(); }
+let rsTimer = 0;
+addEventListener('resize', () => {
+  clearTimeout(rsTimer);
+  rsTimer = setTimeout(() => { layout(); rebuildAll(true); seedFibers(); }, 120);
+});
+mq.addEventListener?.('change', () => { if (!root.dataset.theme) applyTheme(); });
+
+/* =========================================================
+   Go
+   ========================================================= */
+readPalette(); layout(); buildBg(); buildLattice(); seedFibers(); updateThemeBtn();
+startLevel(0);
+let last = performance.now();
+function loop(now){
+  let dt = (now - last)/1000; last = now;
+  if (dt > .05) dt = .05; time += dt;
+  update(dt); render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
